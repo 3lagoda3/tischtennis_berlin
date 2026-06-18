@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: #f6f5f1;
+  color: #0c0c0d;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Subtle table-tennis table: faint grid + center net line. */
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(12, 12, 13, 0.05) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* Dashed center line — the net motif used across cards/dividers. */
+.net-line {
+  background-image: linear-gradient(
+    to right,
+    currentColor 0,
+    currentColor 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 12px 2px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+@layer utilities {
+  .tabnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Hide number input spinners for the score steppers. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
