@@ -12,9 +12,9 @@ function fmtDate(d) {
 }
 
 export function Changelog() {
-  // Show the latest 2 versions by default; expand for the full history.
+  // Show only the latest version by default; expand for the full history.
   const [open, setOpen] = useState(false);
-  const shown = open ? CHANGELOG : CHANGELOG.slice(0, 2);
+  const shown = open ? CHANGELOG : CHANGELOG.slice(0, 1);
 
   return (
     <section className="rounded-3xl bg-paper p-5 shadow-sm ring-1 ring-ink/10">
@@ -43,7 +43,7 @@ export function Changelog() {
         ))}
       </ol>
 
-      {CHANGELOG.length > 2 && (
+      {CHANGELOG.length > 1 && (
         <button
           onClick={() => setOpen((o) => !o)}
           className="mt-4 text-sm font-semibold text-ball hover:underline"
