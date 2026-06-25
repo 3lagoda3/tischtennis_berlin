@@ -4,16 +4,17 @@ A minimalist table-tennis leaderboard for your crew. Add players (with a photo),
 log games, and the table updates **live** on everyone's screen. Built with Next.js +
 Supabase, deploys free on Vercel.
 
-- **Leaderboard** — games played / won / lost, win %, recent **form** + **streaks**, and **1 point per win**.
-- **Podium** — top-3 on a podium up top, tap any player to open their profile.
-- **Log a game** — pick two players from a dropdown, enter the score, winner is automatic.
-- **Edit / delete** — fix a wrong score or remove a player; their games clean up automatically.
+- **Elo leaderboard** — chess-style ratings (start 1000, K=32) so beating stronger players matters; plus games / won / lost, win %, **form** + **streaks**.
+- **Tournaments** — round-robin, single-elim, groups→knockout, or Swiss. Pick players, the app builds the schedule and tells you who's up next; the winner gets a 🏆 badge.
+- **Podium** — top-3 on a podium, tap any player for their profile.
+- **Player profiles** — Elo, win %, point diff, form, favourite victim & nemesis, and **head2head** vs every opponent.
+- **Edit / delete** — admins fix wrong scores or remove players; games clean up automatically.
 - **Recent games feed** — the latest results, live.
-- **Player profiles** — record, win %, point diff, current form, favourite victim & nemesis, full match history.
-- **Head to head** — pick any two players, see your full match history.
-- **Add player** — nickname + take/upload a photo straight from your phone.
+- **Dark / light mode** — toggle in the header, remembers your choice.
+- **Gallery** — admins upload photos from game nights.
+- **Newsletter** — collect emails for tournament announcements.
 - **Live** — changes sync to every open browser instantly.
-- **Optional password lock** — keep viewing open but require a shared password to edit (see below).
+- **Admin login** — viewing is open; all editing is behind an admin password (see below).
 
 ---
 
@@ -69,24 +70,32 @@ git push -u origin main
 
 ---
 
-## Optional: lock editing behind a password
+## Upgrading an existing deployment (v3)
 
-By default anyone with the link can edit. To require a shared password for
-adding/editing/deleting (viewing stays open), set **two** env vars on Vercel
+If you already deployed an earlier version, run the new migration once:
+**Supabase → SQL Editor → New query →** paste [`supabase-migrate-v3.sql`](./supabase-migrate-v3.sql)
+→ **Run**. (Fresh installs: run `supabase-schema.sql` first, then the migration.)
+It adds the `tournaments`, `subscribers`, and `gallery` tables + the gallery photo bucket.
+Elo needs no schema change — it's computed from match history.
+
+## Admin password (editing)
+
+Viewing is always open. **All editing** — players, games, tournaments, gallery —
+is behind an **Admin login** (🔒 chip in the header). Set the password on Vercel
 (Project → Settings → Environment Variables) and redeploy:
 
-| Key | Value | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_EDIT_PROTECTED` | `true` | tells the UI to show the lock |
-| `EDIT_PASSWORD` | your password | checked server-side, never sent to the browser |
+| Key | Value |
+|---|---|
+| `ADMIN_PASSWORD` | your admin password |
 
-A 🔒 chip appears in the header; the first edit prompts for the password and then
-remembers it on that device. This is a light gate meant to keep casual link-sharers
-from messing with the table — not hard security. For that, switch to Supabase Auth + RLS.
+If you don't set it, it defaults to `pinqponq` so the app works immediately.
+⚠️ This is a UI gate (it hides the controls), not hard security — set your own
+`ADMIN_PASSWORD` and don't treat it as bulletproof. For real lockdown, move writes
+behind Supabase Auth + RLS.
 
 ## Notes
-- **Access** is open by default: anyone with the link can add players and log games —
-  fine for a private group. Add the password above, or tighten RLS in `supabase-schema.sql`.
+- The login is remembered per device (localStorage), so the organiser stays logged in.
+- Tournament games count toward Elo just like casual games.
 - **Scoring** is one row per game. Want best-of-X matches or an Elo rating instead?
   It's a small change in `lib/standings.js`.
 - **Colors** live in `tailwind.config.js` (`ink`, `paper`, `ball`). Two colours, monochrome rest.

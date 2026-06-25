@@ -2,21 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ink: 12 12 13;
+  --paper: 255 255 255;
+  --bg: 246 245 241;
+}
+
+.dark {
+  --ink: 233 233 231;
+  --paper: 26 26 30;
+  --bg: 14 14 17;
+}
+
 html,
 body {
   padding: 0;
   margin: 0;
 }
 
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
 body {
-  background: #f6f5f1;
-  color: #0c0c0d;
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Subtle table-tennis table: faint grid + center net line. */
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(12, 12, 13, 0.05) 1px, transparent 0);
+  /* Subtle table-tennis table: faint grid of dots. */
+  background-image: radial-gradient(circle at 1px 1px, rgb(var(--ink) / 0.05) 1px, transparent 0);
   background-size: 22px 22px;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Dashed center line — the net motif used across cards/dividers. */

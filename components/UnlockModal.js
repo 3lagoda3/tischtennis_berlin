@@ -24,23 +24,23 @@ export function UnlockModal({ open, onClose, onSubmit }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Unlock editing">
+    <Modal open={open} onClose={onClose} title="Admin login">
       <form onSubmit={submit} className="space-y-4">
         <div className="flex items-center gap-3 rounded-2xl bg-ink/5 p-3 text-sm text-ink/60">
           <PingBall className="h-5 w-5 shrink-0" />
-          Enter the crew password to add players or log games.
+          Enter the admin password to add, edit, or delete anything.
         </div>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder="Admin password"
           autoFocus
           className="w-full rounded-2xl bg-ink/5 px-4 py-3 outline-none transition focus:bg-ink/10 focus:ring-2 focus:ring-ball/40"
         />
         {error && <p className="text-sm font-medium text-ball">{error}</p>}
         <Button type="submit" variant="accent" className="w-full" disabled={busy}>
-          {busy ? "Checking…" : "Unlock"}
+          {busy ? "Checking…" : "Log in"}
         </Button>
       </form>
     </Modal>

@@ -120,6 +120,19 @@ export function FormDots({ results, max = 5 }) {
   );
 }
 
+// 🏆 badge for tournament winners. `titles` is an array of tournament names.
+export function TrophyBadge({ titles, className = "" }) {
+  if (!titles || titles.length === 0) return null;
+  return (
+    <span
+      title={`Won: ${titles.join(", ")}`}
+      className={`inline-flex items-center gap-0.5 text-xs font-bold text-ball ${className}`}
+    >
+      🏆{titles.length > 1 && <span className="tabnum">{titles.length}</span>}
+    </span>
+  );
+}
+
 // "W3" / "L2" streak chip.
 export function StreakBadge({ streak }) {
   if (!streak) return null;

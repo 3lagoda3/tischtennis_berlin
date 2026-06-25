@@ -5,10 +5,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   const { password } = await req.json().catch(() => ({}));
-  const expected = process.env.EDIT_PASSWORD;
+  // Set ADMIN_PASSWORD in Vercel to override the default. The default exists
+  // only so the app works out of the box — this is a UI gate, not hard security.
+  const expected = process.env.ADMIN_PASSWORD || "pinqponq";
 
-  if (!expected) return Response.json({ ok: true }); // protection not configured
   if (password && password === expected) return Response.json({ ok: true });
-
   return new Response("Unauthorized", { status: 401 });
 }

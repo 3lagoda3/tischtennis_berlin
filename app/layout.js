@@ -20,8 +20,14 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  // Set the theme class before paint to avoid a light/dark flash.
+  const noFlash = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: noFlash }} />
+      </head>
       <body>
         <AppProvider>{children}</AppProvider>
       </body>

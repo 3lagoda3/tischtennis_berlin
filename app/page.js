@@ -6,25 +6,28 @@ import { buildStandings } from "../lib/standings";
 import { PingBall, Button } from "../components/ui";
 import { Podium } from "../components/Podium";
 import { Leaderboard } from "../components/Leaderboard";
+import { Tournaments } from "../components/Tournaments";
 import { RecentGames } from "../components/RecentGames";
-import { HeadToHead } from "../components/HeadToHead";
+import { Gallery } from "../components/Gallery";
+import { Subscribe } from "../components/Subscribe";
 import { PlayerModal } from "../components/PlayerModal";
 import { MatchModal } from "../components/MatchModal";
-import { LockToggle } from "../components/LockToggle";
+import { AdminButton } from "../components/AdminButton";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { SetupNotice } from "../components/SetupNotice";
 
 export default function Page() {
-  const { players, matches, loading, load, isConfigured, ensure } = useApp();
+  const { players, matches, tournaments, loading, load, isConfigured, unlocked, ensure } = useApp();
   const [playerModal, setPlayerModal] = useState(false);
-  const [matchModal, setMatchModal] = useState(null); // false | true(new) | match(edit)
+  const [matchModal, setMatchModal] = useState(false); // false | true(new) | match(edit)
 
-  const standings = useMemo(() => buildStandings(players, matches), [players, matches]);
+  const standings = useMemo(
+    () => buildStandings(players, matches, tournaments),
+    [players, matches, tournaments]
+  );
   const byId = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p])), [players]);
 
   if (!isConfigured) return <SetupNotice />;
-
-  const openMatch = (m) => ensure(() => setMatchModal(m ?? true));
-  const editMatch = (m) => ensure(() => setMatchModal(m));
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-28 pt-8 sm:pt-12">
@@ -35,10 +38,8 @@ export default function Page() {
           <p className="text-sm font-medium text-ink/50">Summer Championship ’26</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <LockToggle />
-          <div className="hidden rounded-full bg-ink/5 px-3 py-1.5 text-xs font-semibold tabnum text-ink/60 sm:block">
-            {players.length} players · {matches.length} games
-          </div>
+          <ThemeToggle />
+          <AdminButton />
         </div>
       </header>
 
@@ -48,30 +49,34 @@ export default function Page() {
         <div className="space-y-6">
           <Podium rows={standings} />
           <Leaderboard rows={standings} />
-          <RecentGames matches={matches} byId={byId} onEdit={editMatch} />
-          <HeadToHead players={players} matches={matches} />
+          <Tournaments />
+          <RecentGames matches={matches} byId={byId} onEdit={unlocked ? (m) => ensure(() => setMatchModal(m)) : null} />
+          <Gallery />
+          <Subscribe />
         </div>
       )}
 
-      {/* Sticky action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-30">
-        <div className="net-line h-0.5 text-ink/15" />
-        <div className="bg-paper/90 px-4 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-2xl gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
-              + Add player
-            </Button>
-            <Button
-              variant="accent"
-              className="flex-1"
-              onClick={() => openMatch()}
-              disabled={players.length < 2}
-            >
-              + Log a game
-            </Button>
+      {/* Sticky admin action bar — only when logged in */}
+      {unlocked && (
+        <div className="fixed inset-x-0 bottom-0 z-30">
+          <div className="net-line h-0.5 text-ink/15" />
+          <div className="bg-paper/90 px-4 py-3 backdrop-blur">
+            <div className="mx-auto flex max-w-2xl gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
+                + Add player
+              </Button>
+              <Button
+                variant="accent"
+                className="flex-1"
+                onClick={() => ensure(() => setMatchModal(true))}
+                disabled={players.length < 2}
+              >
+                + Log a game
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <PlayerModal open={playerModal} onClose={() => setPlayerModal(false)} onSaved={load} />
       <MatchModal
