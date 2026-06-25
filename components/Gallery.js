@@ -4,11 +4,13 @@ import { useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useApp } from "./AppProvider";
 import { IconButton } from "./ui";
+import { Lightbox } from "./Lightbox";
 
 // Photo wall of game nights. Admins can upload + delete.
 export function Gallery() {
   const { gallery, unlocked, ensure, load } = useApp();
   const [busy, setBusy] = useState(false);
+  const [lightbox, setLightbox] = useState(null); // index of opened photo
   const fileRef = useRef(null);
 
   async function upload(e) {
@@ -63,10 +65,21 @@ export function Gallery() {
         <p className="py-4 text-center text-sm text-ink/40">No photos yet.</p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {gallery.map((g) => (
+          {gallery.map((g, idx) => (
             <div key={g.id} className="group relative aspect-square overflow-hidden rounded-xl bg-ink/5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={g.image_url} alt={g.caption || "game night"} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setLightbox(idx)}
+                className="block h-full w-full"
+                aria-label="Open photo"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={g.image_url}
+                  alt={g.caption || "game night"}
+                  className="h-full w-full object-cover transition group-hover:scale-105"
+                />
+              </button>
               {unlocked && (
                 <IconButton
                   label="Delete photo"
@@ -80,6 +93,8 @@ export function Gallery() {
           ))}
         </div>
       )}
+
+      <Lightbox images={gallery} index={lightbox} onClose={() => setLightbox(null)} />
     </section>
   );
 }

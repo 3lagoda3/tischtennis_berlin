@@ -10,6 +10,7 @@ import { Tournaments } from "../components/Tournaments";
 import { RecentGames } from "../components/RecentGames";
 import { Gallery } from "../components/Gallery";
 import { Subscribe } from "../components/Subscribe";
+import { Changelog } from "../components/Changelog";
 import { PlayerModal } from "../components/PlayerModal";
 import { MatchModal } from "../components/MatchModal";
 import { AdminButton } from "../components/AdminButton";
@@ -53,6 +54,7 @@ export default function Page() {
           <RecentGames matches={matches} byId={byId} onEdit={unlocked ? (m) => ensure(() => setMatchModal(m)) : null} />
           <Gallery />
           <Subscribe />
+          <Changelog />
         </div>
       )}
 
