@@ -4,11 +4,16 @@ A minimalist table-tennis leaderboard for your crew. Add players (with a photo),
 log games, and the table updates **live** on everyone's screen. Built with Next.js +
 Supabase, deploys free on Vercel.
 
-- **Leaderboard** — games played / won / lost, win %, and **1 point per win**.
+- **Leaderboard** — games played / won / lost, win %, recent **form** + **streaks**, and **1 point per win**.
+- **Podium** — top-3 on a podium up top, tap any player to open their profile.
 - **Log a game** — pick two players from a dropdown, enter the score, winner is automatic.
+- **Edit / delete** — fix a wrong score or remove a player; their games clean up automatically.
+- **Recent games feed** — the latest results, live.
+- **Player profiles** — record, win %, point diff, current form, favourite victim & nemesis, full match history.
 - **Head to head** — pick any two players, see your full match history.
 - **Add player** — nickname + take/upload a photo straight from your phone.
 - **Live** — changes sync to every open browser instantly.
+- **Optional password lock** — keep viewing open but require a shared password to edit (see below).
 
 ---
 
@@ -64,9 +69,24 @@ git push -u origin main
 
 ---
 
+## Optional: lock editing behind a password
+
+By default anyone with the link can edit. To require a shared password for
+adding/editing/deleting (viewing stays open), set **two** env vars on Vercel
+(Project → Settings → Environment Variables) and redeploy:
+
+| Key | Value | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_EDIT_PROTECTED` | `true` | tells the UI to show the lock |
+| `EDIT_PASSWORD` | your password | checked server-side, never sent to the browser |
+
+A 🔒 chip appears in the header; the first edit prompts for the password and then
+remembers it on that device. This is a light gate meant to keep casual link-sharers
+from messing with the table — not hard security. For that, switch to Supabase Auth + RLS.
+
 ## Notes
-- **Access** is open: anyone with the link can add players and log games — fine for a
-  private group. To lock it down later, tighten the RLS policies in `supabase-schema.sql`.
+- **Access** is open by default: anyone with the link can add players and log games —
+  fine for a private group. Add the password above, or tighten RLS in `supabase-schema.sql`.
 - **Scoring** is one row per game. Want best-of-X matches or an Elo rating instead?
   It's a small change in `lib/standings.js`.
 - **Colors** live in `tailwind.config.js` (`ink`, `paper`, `ball`). Two colours, monochrome rest.

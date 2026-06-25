@@ -1,65 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase, isConfigured } from "../lib/supabaseClient";
+import { useMemo, useState } from "react";
+import { useApp } from "../components/AppProvider";
 import { buildStandings } from "../lib/standings";
 import { PingBall, Button } from "../components/ui";
+import { Podium } from "../components/Podium";
 import { Leaderboard } from "../components/Leaderboard";
+import { RecentGames } from "../components/RecentGames";
 import { HeadToHead } from "../components/HeadToHead";
-import { AddPlayerModal } from "../components/AddPlayerModal";
-import { AddMatchModal } from "../components/AddMatchModal";
+import { PlayerModal } from "../components/PlayerModal";
+import { MatchModal } from "../components/MatchModal";
+import { LockToggle } from "../components/LockToggle";
 import { SetupNotice } from "../components/SetupNotice";
 
 export default function Page() {
-  const [players, setPlayers] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showPlayer, setShowPlayer] = useState(false);
-  const [showMatch, setShowMatch] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!isConfigured) return;
-    const [{ data: p }, { data: m }] = await Promise.all([
-      supabase.from("players").select("*"),
-      supabase.from("matches").select("*").order("created_at", { ascending: false }),
-    ]);
-    setPlayers(p || []);
-    setMatches(m || []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-    load();
-
-    // Live updates: refetch whenever anyone changes players or matches.
-    const channel = supabase
-      .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "players" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, load)
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [load]);
+  const { players, matches, loading, load, isConfigured, ensure } = useApp();
+  const [playerModal, setPlayerModal] = useState(false);
+  const [matchModal, setMatchModal] = useState(null); // false | true(new) | match(edit)
 
   const standings = useMemo(() => buildStandings(players, matches), [players, matches]);
+  const byId = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p])), [players]);
 
   if (!isConfigured) return <SetupNotice />;
 
+  const openMatch = (m) => ensure(() => setMatchModal(m ?? true));
+  const editMatch = (m) => ensure(() => setMatchModal(m));
+
   return (
     <main className="mx-auto max-w-2xl px-4 pb-28 pt-8 sm:pt-12">
-      {/* Header */}
       <header className="mb-8 flex items-center gap-3">
         <PingBall className="h-9 w-9" />
         <div>
           <h1 className="text-2xl font-black leading-none tracking-tight">Berlin Pong</h1>
           <p className="text-sm font-medium text-ink/50">Summer Championship ’26</p>
         </div>
-        <div className="ml-auto rounded-full bg-ink/5 px-3 py-1.5 text-xs font-semibold tabnum text-ink/60">
-          {players.length} players · {matches.length} games
+        <div className="ml-auto flex items-center gap-2">
+          <LockToggle />
+          <div className="hidden rounded-full bg-ink/5 px-3 py-1.5 text-xs font-semibold tabnum text-ink/60 sm:block">
+            {players.length} players · {matches.length} games
+          </div>
         </div>
       </header>
 
@@ -67,7 +46,9 @@ export default function Page() {
         <p className="py-16 text-center text-ink/40">Loading the table…</p>
       ) : (
         <div className="space-y-6">
+          <Podium rows={standings} />
           <Leaderboard rows={standings} />
+          <RecentGames matches={matches} byId={byId} onEdit={editMatch} />
           <HeadToHead players={players} matches={matches} />
         </div>
       )}
@@ -77,13 +58,13 @@ export default function Page() {
         <div className="net-line h-0.5 text-ink/15" />
         <div className="bg-paper/90 px-4 py-3 backdrop-blur">
           <div className="mx-auto flex max-w-2xl gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setShowPlayer(true)}>
+            <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
               + Add player
             </Button>
             <Button
               variant="accent"
               className="flex-1"
-              onClick={() => setShowMatch(true)}
+              onClick={() => openMatch()}
               disabled={players.length < 2}
             >
               + Log a game
@@ -92,12 +73,13 @@ export default function Page() {
         </div>
       </div>
 
-      <AddPlayerModal open={showPlayer} onClose={() => setShowPlayer(false)} onAdded={load} />
-      <AddMatchModal
-        open={showMatch}
-        onClose={() => setShowMatch(false)}
+      <PlayerModal open={playerModal} onClose={() => setPlayerModal(false)} onSaved={load} />
+      <MatchModal
+        open={Boolean(matchModal)}
+        match={typeof matchModal === "object" ? matchModal : null}
+        onClose={() => setMatchModal(false)}
         players={players}
-        onAdded={load}
+        onSaved={load}
       />
     </main>
   );

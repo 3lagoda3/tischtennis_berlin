@@ -76,7 +76,7 @@ export function Modal({ open, onClose, title, children }) {
   );
 }
 
-// Primary / ghost buttons sharing one look.
+// Primary / accent / ghost / danger buttons sharing one look.
 export function Button({ variant = "primary", className = "", ...props }) {
   const base =
     "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition active:scale-95 disabled:opacity-40 disabled:active:scale-100";
@@ -84,6 +84,54 @@ export function Button({ variant = "primary", className = "", ...props }) {
     primary: "bg-ink text-paper hover:bg-ink/85",
     accent: "bg-ball text-white hover:bg-ball/90",
     ghost: "bg-ink/5 text-ink hover:bg-ink/10",
+    danger: "bg-transparent text-ball hover:bg-ball/10",
   };
   return <button className={`${base} ${styles[variant]} ${className}`} {...props} />;
+}
+
+// Small circular icon button (edit pencils etc.).
+export function IconButton({ label, className = "", children, ...props }) {
+  return (
+    <button
+      aria-label={label}
+      title={label}
+      className={`grid h-8 w-8 place-items-center rounded-full text-ink/40 transition hover:bg-ink/5 hover:text-ink ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Last-N results as small dots: win = orange, loss = grey.
+export function FormDots({ results, max = 5 }) {
+  const shown = results.slice(0, max);
+  if (shown.length === 0) return <span className="text-xs text-ink/30">—</span>;
+  return (
+    <span className="inline-flex gap-1">
+      {shown.map((r, i) => (
+        <span
+          key={i}
+          title={r === "W" ? "Win" : "Loss"}
+          className={`h-2 w-2 rounded-full ${r === "W" ? "bg-ball" : "bg-ink/20"}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+// "W3" / "L2" streak chip.
+export function StreakBadge({ streak }) {
+  if (!streak) return null;
+  const win = streak > 0;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-bold tabnum ${
+        win ? "bg-ball/15 text-ball" : "bg-ink/10 text-ink/50"
+      }`}
+    >
+      {win ? "W" : "L"}
+      {Math.abs(streak)}
+    </span>
+  );
 }

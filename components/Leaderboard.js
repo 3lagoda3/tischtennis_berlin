@@ -1,9 +1,10 @@
 "use client";
 
-import { Avatar } from "./ui";
+import Link from "next/link";
+import { Avatar, FormDots, StreakBadge } from "./ui";
 
-function medal(rank) {
-  return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+function rankMark(rank) {
+  return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
 }
 
 export function Leaderboard({ rows }) {
@@ -23,33 +24,33 @@ export function Leaderboard({ rows }) {
           <tr className="text-left text-xs uppercase tracking-widest text-ink/40">
             <th className="py-3 pl-5 pr-2 font-semibold">#</th>
             <th className="py-3 px-2 font-semibold">Player</th>
+            <th className="hidden py-3 px-2 font-semibold sm:table-cell">Form</th>
             <th className="py-3 px-2 text-center font-semibold">P</th>
             <th className="py-3 px-2 text-center font-semibold">W</th>
-            <th className="py-3 px-2 text-center font-semibold">L</th>
+            <th className="hidden py-3 px-2 text-center font-semibold sm:table-cell">L</th>
             <th className="hidden px-2 text-center font-semibold sm:table-cell">Win%</th>
             <th className="py-3 pl-2 pr-5 text-right font-semibold">Pts</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr
-              key={r.id}
-              className="border-t border-ink/5 transition hover:bg-ink/[0.02]"
-            >
+            <tr key={r.id} className="group border-t border-ink/5 transition hover:bg-ink/[0.02]">
               <td className="py-3 pl-5 pr-2">
-                <span className="tabnum font-bold text-ink/40">
-                  {medal(r.rank) || r.rank}
-                </span>
+                <span className="tabnum font-bold text-ink/40">{rankMark(r.rank)}</span>
               </td>
               <td className="py-3 px-2">
-                <div className="flex items-center gap-3">
+                <Link href={`/player/${r.id}`} className="flex items-center gap-3">
                   <Avatar src={r.photo_url} name={r.nickname} size={34} />
-                  <span className="font-semibold">{r.nickname}</span>
-                </div>
+                  <span className="font-semibold group-hover:text-ball">{r.nickname}</span>
+                  <StreakBadge streak={r.streak} />
+                </Link>
+              </td>
+              <td className="hidden py-3 px-2 sm:table-cell">
+                <FormDots results={r.last5} />
               </td>
               <td className="py-3 px-2 text-center tabnum text-ink/60">{r.played}</td>
               <td className="py-3 px-2 text-center tabnum font-semibold">{r.won}</td>
-              <td className="py-3 px-2 text-center tabnum text-ink/60">{r.lost}</td>
+              <td className="hidden py-3 px-2 text-center tabnum text-ink/60 sm:table-cell">{r.lost}</td>
               <td className="hidden px-2 text-center tabnum text-ink/60 sm:table-cell">
                 {r.played ? Math.round(r.winRate * 100) + "%" : "—"}
               </td>
