@@ -108,11 +108,12 @@ export function PlayerModal({ open, onClose, onSaved, player }) {
               </span>
             )}
           </button>
+          {/* No `capture` attr → phones offer Photo Library + Take Photo + Choose File,
+              which is far more reliable than forcing the camera. */}
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="user"
             onChange={pickFile}
             className="hidden"
           />
