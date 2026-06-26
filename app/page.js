@@ -58,27 +58,29 @@ export default function Page() {
         </div>
       )}
 
-      {/* Sticky admin action bar — only when logged in */}
-      {unlocked && (
-        <div className="fixed inset-x-0 bottom-0 z-30">
-          <div className="net-line h-0.5 text-ink/15" />
-          <div className="bg-paper/90 px-4 py-3 backdrop-blur">
-            <div className="mx-auto flex max-w-2xl gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
-                + Add player
-              </Button>
-              <Button
-                variant="accent"
-                className="flex-1"
-                onClick={() => ensure(() => setMatchModal(true))}
-                disabled={players.length < 2}
-              >
-                + Log a game
-              </Button>
-            </div>
+      {/* Sticky action bar — always visible; tapping prompts admin login if needed.
+          Safe-area padding keeps it clear of the iOS home indicator / browser chrome. */}
+      <div className="fixed inset-x-0 bottom-0 z-30">
+        <div className="net-line h-0.5 text-ink/15" />
+        <div
+          className="bg-paper/90 px-4 pt-3 backdrop-blur"
+          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="mx-auto flex max-w-2xl gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
+              + Add player
+            </Button>
+            <Button
+              variant="accent"
+              className="flex-1"
+              onClick={() => ensure(() => setMatchModal(true))}
+              disabled={players.length < 2}
+            >
+              + Log a game
+            </Button>
           </div>
         </div>
-      )}
+      </div>
 
       <PlayerModal open={playerModal} onClose={() => setPlayerModal(false)} onSaved={load} />
       <MatchModal
