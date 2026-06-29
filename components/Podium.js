@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Avatar } from "./ui";
+import { Avatar, TrophyBadge } from "./ui";
 
 // Top-3 podium. Order on screen: 2nd, 1st (tall, centre), 3rd.
 const SLOTS = [
@@ -29,11 +29,14 @@ export function Podium({ rows }) {
             >
               <div className="text-lg">{label}</div>
               <Avatar src={p.photo_url} name={p.nickname} size={big ? 64 : 48} />
-              <div className="text-center">
+              <div className="flex flex-col items-center text-center">
                 <div className={`font-bold leading-tight ${big ? "text-base" : "text-sm"}`}>
                   {p.nickname}
                 </div>
-                <div className="text-xs tabnum text-ink/50">{p.points} pts</div>
+                {p.titles?.length > 0 && (
+                  <TrophyBadge titles={p.titles} size={big ? 26 : 22} className="mt-1" />
+                )}
+                <div className="mt-0.5 text-xs tabnum text-ink/50">{p.eloRounded} Elo</div>
               </div>
               <div
                 className={`mt-1 grid w-full place-items-center rounded-t-xl bg-ink/[0.04] ring-1 ${
