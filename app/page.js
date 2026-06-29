@@ -67,13 +67,14 @@ export default function Page() {
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mx-auto flex max-w-2xl gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => ensure(() => setPlayerModal(true))}>
+            {/* Adding players & logging games is open — no admin password. */}
+            <Button variant="ghost" className="flex-1" onClick={() => setPlayerModal(true)}>
               + Add player
             </Button>
             <Button
               variant="accent"
               className="flex-1"
-              onClick={() => ensure(() => setMatchModal(true))}
+              onClick={() => setMatchModal(true)}
               disabled={players.length < 2}
             >
               + Log a game
