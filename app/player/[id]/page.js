@@ -75,7 +75,7 @@ export default function PlayerPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black tracking-tight">{player.nickname}</h1>
-            <TrophyBadge titles={row?.titles} />
+            <TrophyBadge titles={row?.titles} size={34} />
           </div>
           <div className="mt-1 flex items-center gap-2 text-sm text-ink/50">
             <span className="font-semibold">Rank #{row?.rank ?? "—"}</span>

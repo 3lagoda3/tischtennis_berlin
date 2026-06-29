@@ -14,6 +14,7 @@ import {
 } from "../../../lib/tournament";
 import { useApp } from "../../../components/AppProvider";
 import { Avatar, Button, PingBall } from "../../../components/ui";
+import { WinnerBadge } from "../../../components/WinnerBadge";
 import { FixtureResultModal } from "../../../components/FixtureResultModal";
 
 function Fixture({ f, byId, onLog, canLog }) {
@@ -153,7 +154,7 @@ export default function TournamentPage() {
 
       {champ && (
         <div className="mt-5 flex items-center gap-3 rounded-3xl bg-ball/10 p-4 ring-1 ring-ball/20">
-          <span className="text-3xl">{badgeFor(t.format).icon}</span>
+          <WinnerBadge format={t.format} size={56} />
           <Avatar src={champ.photo_url} name={champ.nickname} size={44} />
           <div>
             <div
