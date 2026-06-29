@@ -9,7 +9,7 @@ import { Lightbox } from "./Lightbox";
 
 // Photo wall of game nights. Admins can upload + delete.
 export function Gallery() {
-  const { gallery, unlocked, ensure, load } = useApp();
+  const { gallery, unlocked, load } = useApp();
   const [busy, setBusy] = useState(false);
   const [lightbox, setLightbox] = useState(null); // index of opened photo
   const fileRef = useRef(null);
@@ -42,24 +42,18 @@ export function Gallery() {
     load();
   }
 
-  if (gallery.length === 0 && !unlocked) return null;
-
   return (
     <section className="rounded-3xl bg-paper p-5 shadow-sm ring-1 ring-ink/10">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-ink/50">Gallery</h2>
-        {unlocked && (
-          <>
-            <button
-              onClick={() => ensure(() => fileRef.current?.click())}
-              disabled={busy}
-              className="rounded-full bg-ink/5 px-3 py-1.5 text-xs font-semibold text-ink/70 transition hover:bg-ink/10 disabled:opacity-50"
-            >
-              {busy ? "Uploading…" : "+ Add photo"}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={upload} className="hidden" />
-          </>
-        )}
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          className="rounded-full bg-ink/5 px-3 py-1.5 text-xs font-semibold text-ink/70 transition hover:bg-ink/10 disabled:opacity-50"
+        >
+          {busy ? "Uploading…" : "+ Add photo"}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" onChange={upload} className="hidden" />
       </div>
 
       {gallery.length === 0 ? (
