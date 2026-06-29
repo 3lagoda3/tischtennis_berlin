@@ -8,12 +8,12 @@ import { FORMATS, generate, advance } from "../lib/tournament";
 import { useApp } from "./AppProvider";
 import { Modal, Button, Avatar } from "./ui";
 
-const MIN_PLAYERS = 4;
 const MIN_PER_GAME = 12; // rough minutes per game for the time estimate
 
 // Estimate how many games a format will produce, for the duration hint.
-function estimateGames(format, n, rounds) {
+function estimateGames(format, n, rounds, target) {
   if (n < 2) return 0;
+  if (format === "duel") return target; // shortest possible; can run up to 2·target−1
   if (format === "round_robin") return (n * (n - 1)) / 2;
   if (format === "single_elim") return n - 1;
   if (format === "swiss") return rounds * Math.floor(n / 2);
@@ -35,14 +35,15 @@ export function TournamentModal({ open, onClose }) {
   const [format, setFormat] = useState("round_robin");
   const [picked, setPicked] = useState(() => new Set());
   const [rounds, setRounds] = useState(4);
+  const [target, setTarget] = useState(10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const fmt = FORMATS.find((f) => f.id === format);
   const count = picked.size;
   const games = useMemo(
-    () => estimateGames(format, count, rounds),
-    [format, count, rounds]
+    () => estimateGames(format, count, rounds, target),
+    [format, count, rounds, target]
   );
 
   function toggle(id) {
@@ -57,15 +58,18 @@ export function TournamentModal({ open, onClose }) {
     e.preventDefault();
     const title = name.trim();
     if (!title) return setError("Give the tournament a name.");
-    if (count < Math.max(MIN_PLAYERS, fmt.min))
-      return setError(`Need at least ${Math.max(MIN_PLAYERS, fmt.min)} players for ${fmt.name}.`);
+    if (format === "duel") {
+      if (count !== 2) return setError("Pick exactly 2 players for a duel.");
+    } else if (count < fmt.min) {
+      return setError(`Need at least ${fmt.min} players for ${fmt.name}.`);
+    }
 
     setBusy(true);
     setError("");
     try {
       const ids = players.filter((p) => picked.has(p.id)).map((p) => p.id);
       const { rating } = computeElo(players, matches); // seed by current Elo
-      let data = generate(format, ids, { rounds }, rating);
+      let data = generate(format, ids, { rounds, target }, rating);
       data = advance(data, rating); // resolve any first-round byes
 
       const { data: row, error: err } = await supabase
@@ -118,6 +122,21 @@ export function TournamentModal({ open, onClose }) {
           <p className="mt-1.5 px-1 text-xs text-ink/50">{fmt.blurb}</p>
         </div>
 
+        {format === "duel" && (
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-ink/70">First to</label>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={target}
+              onChange={(e) => setTarget(Math.max(1, Math.min(50, parseInt(e.target.value || "1", 10))))}
+              className="w-20 rounded-xl bg-ink/5 px-3 py-2 text-center tabnum outline-none focus:ring-2 focus:ring-ball/40"
+            />
+            <span className="text-sm text-ink/50">game wins</span>
+          </div>
+        )}
+
         {format === "swiss" && (
           <div className="flex items-center gap-3">
             <label className="text-sm font-medium text-ink/70">Rounds</label>
@@ -163,14 +182,25 @@ export function TournamentModal({ open, onClose }) {
           </div>
         </div>
 
-        {count >= 2 && (
-          <div className="rounded-2xl bg-ink/5 px-4 py-3 text-sm text-ink/60">
-            ≈ <span className="font-bold text-ink">{games}</span> games · about{" "}
-            <span className="font-bold text-ink">
-              {Math.max(1, Math.round((games * MIN_PER_GAME) / 60))}h
-            </span>{" "}
-            at the table. Players are seeded by current Elo.
-          </div>
+        {format === "duel" ? (
+          count === 2 && (
+            <div className="rounded-2xl bg-ink/5 px-4 py-3 text-sm text-ink/60">
+              First to <span className="font-bold text-ink">{target}</span> wins ·{" "}
+              <span className="font-bold text-ink">{target}</span>–
+              <span className="font-bold text-ink">{2 * target - 1}</span> games. The app keeps
+              dealing games until someone gets there. Every game counts toward Elo.
+            </div>
+          )
+        ) : (
+          count >= 2 && (
+            <div className="rounded-2xl bg-ink/5 px-4 py-3 text-sm text-ink/60">
+              ≈ <span className="font-bold text-ink">{games}</span> games · about{" "}
+              <span className="font-bold text-ink">
+                {Math.max(1, Math.round((games * MIN_PER_GAME) / 60))}h
+              </span>{" "}
+              at the table. Players are seeded by current Elo.
+            </div>
+          )
         )}
 
         {error && <p className="text-sm font-medium text-ball">{error}</p>}

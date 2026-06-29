@@ -125,7 +125,7 @@ export default function TournamentPage() {
   }
 
   const champ = t.winner_id ? byId[t.winner_id] : null;
-  const showStandings = t.format === "round_robin" || t.format === "swiss";
+  const showStandings = t.format === "round_robin" || t.format === "swiss" || t.format === "duel";
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-20 pt-8">
