@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { uuid } from "../lib/uuid";
 import { useApp } from "./AppProvider";
 import { IconButton } from "./ui";
 import { Lightbox } from "./Lightbox";
@@ -20,7 +21,7 @@ export function Gallery() {
     setBusy(true);
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${uuid()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("gallery")
         .upload(path, file, { cacheControl: "3600" });

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { uuid } from "../lib/uuid";
 import { Modal, Button, Avatar } from "./ui";
 
 // Handles both "add player" and "edit player" (when `player` is passed).
@@ -35,7 +36,7 @@ export function PlayerModal({ open, onClose, onSaved, player }) {
 
   async function uploadPhoto() {
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${crypto.randomUUID()}.${ext}`;
+    const path = `${uuid()}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from("avatars")
       .upload(path, file, { cacheControl: "3600", upsert: false });
