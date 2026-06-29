@@ -6,7 +6,7 @@ import { uuid } from "../lib/uuid";
 import { Modal, Button, Avatar } from "./ui";
 
 // Handles both "add player" and "edit player" (when `player` is passed).
-export function PlayerModal({ open, onClose, onSaved, player }) {
+export function PlayerModal({ open, onClose, onSaved, onPlayerAdded, player }) {
   const editing = Boolean(player);
   const [nickname, setNickname] = useState("");
   const [file, setFile] = useState(null);
@@ -68,6 +68,7 @@ export function PlayerModal({ open, onClose, onSaved, player }) {
         if (err) throw err;
       }
 
+      if (!editing) onPlayerAdded?.(name, photo_url);
       onSaved?.();
       onClose();
     } catch (err) {

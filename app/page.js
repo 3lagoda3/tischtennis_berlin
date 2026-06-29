@@ -16,11 +16,13 @@ import { MatchModal } from "../components/MatchModal";
 import { AdminButton } from "../components/AdminButton";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { SetupNotice } from "../components/SetupNotice";
+import { PlayerJoinedCelebration } from "../components/PlayerJoinedCelebration";
 
 export default function Page() {
   const { players, matches, tournaments, loading, load, isConfigured, unlocked, ensure } = useApp();
   const [playerModal, setPlayerModal] = useState(false);
   const [matchModal, setMatchModal] = useState(false); // false | true(new) | match(edit)
+  const [celebration, setCelebration] = useState(null); // { name, photoUrl } | null
 
   const standings = useMemo(
     () => buildStandings(players, matches, tournaments),
@@ -83,7 +85,19 @@ export default function Page() {
         </div>
       </div>
 
-      <PlayerModal open={playerModal} onClose={() => setPlayerModal(false)} onSaved={load} />
+      <PlayerModal
+        open={playerModal}
+        onClose={() => setPlayerModal(false)}
+        onSaved={load}
+        onPlayerAdded={(name, photoUrl) => setCelebration({ name, photoUrl })}
+      />
+      {celebration && (
+        <PlayerJoinedCelebration
+          name={celebration.name}
+          photoUrl={celebration.photoUrl}
+          onDone={() => setCelebration(null)}
+        />
+      )}
       <MatchModal
         open={Boolean(matchModal)}
         match={typeof matchModal === "object" ? matchModal : null}
