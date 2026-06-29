@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { badgeFor } from "../lib/tournament";
 
 // Spinning table-tennis ball used as the brand mark.
 export function PingBall({ className = "w-7 h-7" }) {
@@ -120,15 +121,36 @@ export function FormDots({ results, max = 5 }) {
   );
 }
 
-// 🏆 badge for tournament winners. `titles` is an array of tournament names.
+// Per-format winner badges. `titles` is an array of { name, format }.
+// One chip per format the player has won, with a count when they've won
+// the same format more than once.
 export function TrophyBadge({ titles, className = "" }) {
   if (!titles || titles.length === 0) return null;
+
+  const byFmt = {};
+  for (const t of titles) {
+    // Tolerate legacy string titles (default them to the league trophy).
+    const fmt = typeof t === "string" ? "round_robin" : t.format || "round_robin";
+    const name = typeof t === "string" ? t : t.name;
+    (byFmt[fmt] ||= []).push(name);
+  }
+
   return (
-    <span
-      title={`Won: ${titles.join(", ")}`}
-      className={`inline-flex items-center gap-0.5 text-xs font-bold text-ball ${className}`}
-    >
-      🏆{titles.length > 1 && <span className="tabnum">{titles.length}</span>}
+    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+      {Object.entries(byFmt).map(([fmt, names]) => {
+        const b = badgeFor(fmt);
+        return (
+          <span
+            key={fmt}
+            title={`${b.label}: ${names.join(", ")}`}
+            className="inline-flex items-center gap-0.5 text-xs font-bold leading-none"
+            style={{ color: b.color }}
+          >
+            <span aria-hidden>{b.icon}</span>
+            {names.length > 1 && <span className="tabnum">{names.length}</span>}
+          </span>
+        );
+      })}
     </span>
   );
 }
