@@ -35,8 +35,10 @@ export function PlayerPicker({ players, value, onChange, placeholder = "Select p
         <span className="ml-auto text-ink/40">▾</span>
       </button>
 
+      {/* In-flow (not absolute) so the modal grows and scrolls — an overlay
+          near the bottom of a phone screen made the last players unreachable. */}
       {open && (
-        <div className="absolute z-20 mt-2 max-h-60 w-full overflow-auto rounded-2xl bg-paper p-1 shadow-xl ring-1 ring-ink/10">
+        <div className="mt-2 max-h-60 w-full overflow-auto rounded-2xl bg-paper p-1 shadow-xl ring-1 ring-ink/10">
           {options.length === 0 && (
             <div className="px-3 py-3 text-sm text-ink/40">No players yet</div>
           )}

@@ -59,7 +59,8 @@ export function Modal({ open, onClose, title, children }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md animate-bounce-in rounded-t-3xl bg-paper p-6 shadow-2xl ring-1 ring-ink/10 sm:rounded-3xl"
+        className="max-h-[85dvh] w-full max-w-md animate-bounce-in overflow-y-auto overscroll-contain rounded-t-3xl bg-paper p-6 shadow-2xl ring-1 ring-ink/10 sm:rounded-3xl"
+        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
