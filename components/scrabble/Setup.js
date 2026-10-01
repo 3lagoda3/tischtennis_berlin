@@ -10,6 +10,7 @@ const LEVELS = [
 ];
 
 export function Setup({ onStart, onResume, canResume, onOnline }) {
+  const [hostName, setHostName] = useState("");
   const [players, setPlayers] = useState([
     { name: "You", ai: null },
     { name: "Computer", ai: "normal" },
@@ -117,9 +118,17 @@ export function Setup({ onStart, onResume, canResume, onOnline }) {
         <div className="mt-6 rounded-2xl bg-ink/[0.04] p-4">
           <p className="text-sm font-bold">Play a friend online</p>
           <p className="mb-3 text-sm text-ink/50">
-            Uses the first name above. You get a link to send — no sign-up for either of you.
+            You get a link to send. No sign-up for either of you.
           </p>
-          <Button variant="primary" className="w-full" onClick={() => onOnline(players[0].name)}>
+          <input
+            value={hostName}
+            onChange={(e) => setHostName(e.target.value)}
+            maxLength={14}
+            placeholder="Your name"
+            aria-label="Your name for the online game"
+            className="mb-2 w-full rounded-full bg-paper px-4 py-2 text-sm font-semibold outline-none ring-1 ring-ink/10 focus:ring-ball"
+          />
+          <Button variant="primary" className="w-full" onClick={() => onOnline(hostName)}>
             Create online game
           </Button>
         </div>
