@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PingBall, Button, Modal } from "../ui";
 import { ThemeToggle } from "../ThemeToggle";
 import { Board } from "./Board";
@@ -13,6 +14,8 @@ import {
 } from "../../lib/scrabble/engine";
 import { generateMoves, chooseMove } from "../../lib/scrabble/ai";
 import { loadDictionary, getTrie } from "../../lib/scrabble/dictionary";
+import { createRoom } from "../../lib/scrabble/online";
+import { isConfigured } from "../../lib/supabaseClient";
 
 const SAVE_KEY = "berlin-scrabble-v1";
 
@@ -25,10 +28,38 @@ function readSave() {
   }
 }
 
-export function ScrabbleApp() {
+function InviteCard({ code }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== "undefined" ? `${window.location.origin}/scrabble/${code}` : "";
+  async function share() {
+    try {
+      if (navigator.share) return await navigator.share({ title: "Scrabble?", url });
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+  return (
+    <div className="rounded-3xl bg-paper p-5 ring-1 ring-ball">
+      <p className="text-sm font-semibold text-ink/60">Send this link to your friend</p>
+      <p className="my-1 break-all text-base font-black tracking-tight">{url.replace(/^https?:\/\//, "")}</p>
+      <p className="mb-3 text-sm text-ink/50">
+        Or tell them the code: <b className="tracking-widest text-ink">{code}</b>
+      </p>
+      <Button variant="accent" onClick={share}>
+        {copied ? "Copied ✓" : "Copy invite link"}
+      </Button>
+    </div>
+  );
+}
+
+export function ScrabbleApp({ online = null }) {
+  const router = useRouter();
   const [dict, setDict] = useState(null);
   const [dictError, setDictError] = useState(false);
-  const [game, setGame] = useState(null);
+  const [localGame, setLocalGame] = useState(null);
+  const game = online ? online.game : localGame;
+  const setGame = online ? online.commit : setLocalGame;
   const [saved, setSaved] = useState(null);
 
   const [pending, setPending] = useState([]); // [{ r, c, ri, l, blank }]
@@ -50,7 +81,7 @@ export function ScrabbleApp() {
   }, []);
 
   useEffect(() => {
-    if (!game) return;
+    if (!game || online) return;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(game));
     } catch {}
@@ -71,8 +102,11 @@ export function ScrabbleApp() {
   }, [toast]);
 
   const cp = game ? game.players[game.turn] : null;
+  const me = game ? (online ? online.seat : game.turn) : 0;
+  const mine = game ? game.players[me] : null;
+  const myTurn = !!game && !game.over && !game.waiting && (!online || game.turn === me);
   const humans = game ? game.players.filter((p) => !p.ai).length : 0;
-  const hidden = !!game && !game.over && !cp.ai && humans > 1 && !revealed;
+  const hidden = !online && !!game && !game.over && !cp.ai && humans > 1 && !revealed;
 
   // ── Computer player ──
   useEffect(() => {
@@ -110,13 +144,13 @@ export function ScrabbleApp() {
     return { ...ev, bad };
   }, [game, pending, dict]);
 
-  const canPlay = !!evaluation?.ok && !evaluation.bad.length && !!dict && !cp?.ai && !hidden;
+  const canPlay = !!evaluation?.ok && !evaluation.bad.length && !!dict && !cp?.ai && !hidden && myTurn;
   const usedRi = new Set(pending.map((p) => p.ri));
 
   // ── Placing tiles ──
   const place = useCallback(
     (ri, r, c, keepLetter) => {
-      const tile = cp.rack[ri];
+      const tile = mine.rack[ri];
       setPending((ps) => ps.filter((p) => p.ri !== ri));
       if (tile === "?" && !keepLetter) {
         setBlankAsk({ ri, r, c });
@@ -128,19 +162,19 @@ export function ScrabbleApp() {
       ]);
       setSelected(null);
     },
-    [cp]
+    [mine]
   );
 
   const recallOne = (ri) => setPending((ps) => ps.filter((p) => p.ri !== ri));
 
   function onCell(r, c) {
     if (Date.now() < ignoreClick.current) return;
-    if (selected != null && !hidden && !cp.ai) place(selected, r, c);
+    if (selected != null && !hidden && !cp.ai && !game.waiting) place(selected, r, c);
   }
 
   // Unified tap / drag for rack tiles and pending board tiles.
   function startDrag(e, src) {
-    if (hidden || cp.ai || (e.button != null && e.button !== 0)) return;
+    if (hidden || cp.ai || game.waiting || (e.button != null && e.button !== 0)) return;
     const start = { x: e.clientX, y: e.clientY };
     const ghost = { l: src.l, blank: src.blank };
     let moved = false;
@@ -189,6 +223,15 @@ export function ScrabbleApp() {
     setSaved(null);
   }
 
+  async function startOnline(name) {
+    try {
+      const code = await createRoom(name.trim() || "Player 1");
+      router.push(`/scrabble/${code}`);
+    } catch {
+      setToast("Couldn’t open a room. Try again.");
+    }
+  }
+
   function play() {
     if (!canPlay) return;
     const placements = pending.map((p) => ({ r: p.r, c: p.c, l: p.l, b: p.blank }));
@@ -199,18 +242,19 @@ export function ScrabbleApp() {
   function shuffleRack() {
     setPending([]);
     setSelected(null);
-    setGame(reorderRack(game, shuffle(cp.rack)));
+    setGame(reorderRack(game, shuffle(mine.rack), me));
   }
 
   function doSwap() {
-    const next = applySwap(game, swapPick.map((i) => cp.rack[i]));
+    const next = applySwap(game, swapPick.map((i) => mine.rack[i]));
     setSwapOpen(false);
     setSwapPick([]);
     if (next) setGame(next);
   }
 
   function leave() {
-    setGame(null);
+    if (online) return router.push("/scrabble");
+    setLocalGame(null);
     setSaved(null);
     try {
       localStorage.removeItem(SAVE_KEY);
@@ -223,6 +267,8 @@ export function ScrabbleApp() {
   const status = (() => {
     if (!game) return "";
     if (game.over) return "Game over.";
+    if (game.waiting) return "Waiting for your friend to join…";
+    if (online && !myTurn) return `${cp.name}’s turn…`;
     if (cp.ai) return `${cp.name} is thinking…`;
     if (hidden) return `Pass the device to ${cp.name}.`;
     if (!pending.length) return `${cp.name}: tap a tile, then a square — or drag it.`;
@@ -259,6 +305,7 @@ export function ScrabbleApp() {
         <Setup
           onStart={startGame}
           canResume={!!saved}
+          onOnline={isConfigured ? startOnline : null}
           onResume={() => {
             setGame(saved);
             setShowResult(true);
@@ -266,6 +313,8 @@ export function ScrabbleApp() {
         />
       ) : (
         <div className="space-y-4">
+          {online && game.waiting && <InviteCard code={online.code} />}
+
           {/* Scoreboard */}
           <div className="flex gap-2 overflow-x-auto">
             {game.players.map((p, i) => (
@@ -310,7 +359,7 @@ export function ScrabbleApp() {
           <div className="relative">
             <div className="flex justify-center gap-1.5 rounded-2xl bg-ink/10 p-2 ring-1 ring-ink/10" data-rack>
               {Array.from({ length: RACK_SIZE }, (_, i) => {
-                const t = cp.rack[i];
+                const t = mine.rack[i];
                 const empty = t == null || usedRi.has(i);
                 return (
                   <div key={i} className="aspect-square w-full max-w-[3.6rem] rounded-[18%] bg-ink/10">
@@ -339,7 +388,7 @@ export function ScrabbleApp() {
           </div>
 
           {/* Controls */}
-          {!game.over && !cp.ai && !hidden && (
+          {myTurn && !cp.ai && !hidden && (
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="accent"
@@ -410,7 +459,7 @@ export function ScrabbleApp() {
               onClick={() => (game.over ? leave() : setConfirmNew(true))}
               className="text-sm font-semibold text-ink/40 transition hover:text-ink"
             >
-              {game.over ? "New game" : "End game"}
+              {game.over ? (online ? "Back to lobby" : "New game") : online ? "Leave game" : "End game"}
             </button>
           </div>
         </div>
@@ -456,7 +505,7 @@ export function ScrabbleApp() {
       <Modal open={swapOpen} onClose={() => setSwapOpen(false)} title="Swap tiles">
         <p className="mb-4 text-sm text-ink/60">Pick the tiles to throw back. You’ll skip this turn.</p>
         <div className="mb-5 flex justify-center gap-1.5">
-          {cp?.rack.map((t, i) => (
+          {mine?.rack.map((t, i) => (
             <button
               key={i}
               onClick={() => setSwapPick((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]))}
@@ -472,14 +521,16 @@ export function ScrabbleApp() {
       </Modal>
 
       {/* End game confirm */}
-      <Modal open={confirmNew} onClose={() => setConfirmNew(false)} title="End this game?">
-        <p className="mb-5 text-sm text-ink/60">The current game will be lost.</p>
+      <Modal open={confirmNew} onClose={() => setConfirmNew(false)} title={online ? "Leave this game?" : "End this game?"}>
+        <p className="mb-5 text-sm text-ink/60">
+          {online ? "You can come back with the same link, on this device." : "The current game will be lost."}
+        </p>
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1" onClick={() => setConfirmNew(false)}>
             Keep playing
           </Button>
           <Button variant="primary" className="flex-1" onClick={leave}>
-            End game
+            {online ? "Leave" : "End game"}
           </Button>
         </div>
       </Modal>

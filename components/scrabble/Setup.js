@@ -9,7 +9,7 @@ const LEVELS = [
   ["hard", "Hard"],
 ];
 
-export function Setup({ onStart, onResume, canResume }) {
+export function Setup({ onStart, onResume, canResume, onOnline }) {
   const [players, setPlayers] = useState([
     { name: "You", ai: null },
     { name: "Computer", ai: "normal" },
@@ -112,6 +112,18 @@ export function Setup({ onStart, onResume, canResume }) {
           </Button>
         )}
       </div>
+
+      {onOnline && (
+        <div className="mt-6 rounded-2xl bg-ink/[0.04] p-4">
+          <p className="text-sm font-bold">Play a friend online</p>
+          <p className="mb-3 text-sm text-ink/50">
+            Uses the first name above. You get a link to send — no sign-up for either of you.
+          </p>
+          <Button variant="primary" className="w-full" onClick={() => onOnline(players[0].name)}>
+            Create online game
+          </Button>
+        </div>
+      )}
 
       <details className="mt-6 text-sm text-ink/60">
         <summary className="cursor-pointer font-semibold text-ink/70">How it works</summary>
