@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useApp } from "../components/AppProvider";
 import { buildStandings } from "../lib/standings";
 import { PingBall, Button } from "../components/ui";
@@ -54,6 +55,16 @@ export default function Page() {
           <Leaderboard rows={standings} />
           <Tournaments />
           <RecentGames matches={matches} byId={byId} onEdit={unlocked ? (m) => ensure(() => setMatchModal(m)) : null} />
+          <Link
+            href="/scrabble"
+            className="flex items-center justify-between rounded-3xl bg-paper px-5 py-4 shadow-sm ring-1 ring-ink/10 transition hover:ring-ball"
+          >
+            <span>
+              <span className="block text-base font-black tracking-tight">Berlin Scrabble</span>
+              <span className="block text-sm text-ink/50">Rest day? Play the computer or pass the phone around.</span>
+            </span>
+            <span className="text-xl text-ball">→</span>
+          </Link>
           <Gallery />
           <Subscribe />
           <Changelog />
