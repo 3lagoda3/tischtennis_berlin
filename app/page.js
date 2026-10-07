@@ -65,6 +65,16 @@ export default function Page() {
             </span>
             <span className="text-xl text-ball">→</span>
           </Link>
+          <Link
+            href="/battleship"
+            className="flex items-center justify-between rounded-3xl bg-paper px-5 py-4 shadow-sm ring-1 ring-ink/10 transition hover:ring-ball"
+          >
+            <span>
+              <span className="block text-base font-black tracking-tight">Berlin Battleship</span>
+              <span className="block text-sm text-ink/50">Морской бой. Sink the computer or challenge a friend online.</span>
+            </span>
+            <span className="text-xl text-ball">→</span>
+          </Link>
           <Gallery />
           <Subscribe />
           <Changelog />
