@@ -13,6 +13,7 @@ import {
 import { chooseShot } from "../../lib/battleship/ai";
 import { createRoom } from "../../lib/battleship/online";
 import { isConfigured } from "../../lib/supabaseClient";
+import { copyText } from "../../lib/copyText";
 
 const SAVE_KEY = "berlin-battleship-v1";
 const LEVELS = [
@@ -53,11 +54,14 @@ function InviteCard({ code }) {
   const [copied, setCopied] = useState(false);
   const url = typeof window !== "undefined" ? `${window.location.origin}/battleship/${code}` : "";
   async function share() {
-    try {
-      if (navigator.share) return await navigator.share({ title: "Морской бой?", url });
-      await navigator.clipboard.writeText(url);
+    if (await copyText(url)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      return;
+    }
+    // Copying blocked → offer the system share sheet instead.
+    try {
+      await navigator.share?.({ title: "Морской бой?", url });
     } catch {}
   }
   return (

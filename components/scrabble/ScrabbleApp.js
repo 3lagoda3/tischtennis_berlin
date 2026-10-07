@@ -17,6 +17,7 @@ import { loadDictionary, getTrie } from "../../lib/scrabble/dictionary";
 import { createRoom } from "../../lib/scrabble/online";
 import { fetchOurWords, addOurWords, REGIONS } from "../../lib/scrabble/ourWords";
 import { isConfigured } from "../../lib/supabaseClient";
+import { copyText } from "../../lib/copyText";
 
 const SAVE_KEY = "berlin-scrabble-v1";
 
@@ -33,11 +34,14 @@ function InviteCard({ code }) {
   const [copied, setCopied] = useState(false);
   const url = typeof window !== "undefined" ? `${window.location.origin}/scrabble/${code}` : "";
   async function share() {
-    try {
-      if (navigator.share) return await navigator.share({ title: "Scrabble?", url });
-      await navigator.clipboard.writeText(url);
+    if (await copyText(url)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      return;
+    }
+    // Copying blocked → offer the system share sheet instead.
+    try {
+      await navigator.share?.({ title: "Scrabble?", url });
     } catch {}
   }
   return (
