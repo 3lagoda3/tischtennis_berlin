@@ -10,11 +10,12 @@ import { Tile } from "./Tile";
 import { Setup } from "./Setup";
 import {
   createGame, evaluateMove, applyPlay, applyPass, applySwap, reorderRack,
-  isFirstMove, shuffle, RACK_SIZE,
+  isFirstMove, shuffle, langOf, RACK_SIZE,
 } from "../../lib/scrabble/engine";
 import { generateMoves, chooseMove } from "../../lib/scrabble/ai";
 import { loadDictionary, getTrie } from "../../lib/scrabble/dictionary";
 import { createRoom } from "../../lib/scrabble/online";
+import { fetchOurWords, addOurWords, REGIONS } from "../../lib/scrabble/ourWords";
 import { isConfigured } from "../../lib/supabaseClient";
 
 const SAVE_KEY = "berlin-scrabble-v1";
@@ -73,12 +74,25 @@ export function ScrabbleApp({ online = null }) {
   const [revealed, setRevealed] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [toast, setToast] = useState(null);
+  const [ours, setOurs] = useState(new Set()); // friend-accepted words for this language
+  const [askOpen, setAskOpen] = useState(false);
+  const [region, setRegion] = useState(null);
   const ignoreClick = useRef(0);
+
+  const lang = game ? langOf(game).id : null;
 
   useEffect(() => {
     setSaved(readSave());
-    loadDictionary().then(setDict).catch(() => setDictError(true));
   }, []);
+
+  // Load the word list (and our accepted words) for the game's language.
+  useEffect(() => {
+    if (!lang) return;
+    setDict(null);
+    setDictError(false);
+    loadDictionary(lang).then(setDict).catch(() => setDictError(true));
+    fetchOurWords(lang).then((rows) => setOurs(new Set(rows.map((r) => r.word))));
+  }, [lang]);
 
   useEffect(() => {
     if (!game || online) return;
@@ -114,7 +128,7 @@ export function ScrabbleApp({ online = null }) {
     setThinking(true);
     const t = setTimeout(() => {
       const root = getTrie(dict);
-      const moves = generateMoves(game.board, cp.rack, root);
+      const moves = generateMoves(game.board, cp.rack, root, 1500, langOf(game).alphabet);
       const m = chooseMove(moves, cp.rack, cp.ai);
       let next;
       if (m) {
@@ -140,11 +154,17 @@ export function ScrabbleApp({ online = null }) {
     const placements = pending.map((p) => ({ r: p.r, c: p.c, l: p.l, b: p.blank }));
     const ev = evaluateMove(game.board, placements, isFirstMove(game));
     if (!ev.ok) return ev;
-    const bad = dict ? ev.words.filter((w) => !dict.has(w.word)).map((w) => w.word) : [];
+    const extra = game.extraWords || [];
+    const known = (w) => dict.has(w) || ours.has(w) || extra.includes(w);
+    const bad = dict ? [...new Set(ev.words.map((w) => w.word).filter((w) => !known(w)))] : [];
     return { ...ev, bad };
-  }, [game, pending, dict]);
+  }, [game, pending, dict, ours]);
 
-  const canPlay = !!evaluation?.ok && !evaluation.bad.length && !!dict && !cp?.ai && !hidden && myTurn;
+  const proposal = game?.proposal || null;
+  const canPlay = !!evaluation?.ok && !evaluation.bad.length && !!dict && !cp?.ai && !hidden && myTurn && !proposal;
+  const canAsk = !!evaluation?.ok && !!evaluation.bad.length && !!dict && !cp?.ai && !hidden && myTurn && !proposal;
+  // Who gets to say yes: in an online game the other player; on one device, whoever's holding it.
+  const judging = !!proposal && (!online || proposal.player !== me);
   const usedRi = new Set(pending.map((p) => p.ri));
 
   // ── Placing tiles ──
@@ -215,17 +235,17 @@ export function ScrabbleApp({ online = null }) {
   }
 
   // ── Actions ──
-  function startGame(players) {
-    setGame(createGame(players));
+  function startGame(players, language) {
+    setGame(createGame(players, language));
     setPending([]);
     setSelected(null);
     setShowResult(true);
     setSaved(null);
   }
 
-  async function startOnline(name) {
+  async function startOnline(name, language) {
     try {
-      const code = await createRoom(name.trim() || "Player 1");
+      const code = await createRoom(name.trim() || "Player 1", language);
       router.push(`/scrabble/${code}`);
     } catch {
       setToast("Couldn’t open a room. Try again.");
@@ -237,6 +257,31 @@ export function ScrabbleApp({ online = null }) {
     const placements = pending.map((p) => ({ r: p.r, c: p.c, l: p.l, b: p.blank }));
     if (evaluation.bingo) setToast(`BINGO! +${evaluation.score}`);
     setGame(applyPlay(game, placements, evaluation));
+  }
+
+  // Unknown word → ask the table. Accepted words are saved to "Наші слова" for every future game.
+  function ask() {
+    if (!canAsk) return;
+    const placements = pending.map((p) => ({ r: p.r, c: p.c, l: p.l, b: p.blank }));
+    setAskOpen(false);
+    setGame({ ...game, proposal: { player: game.turn, placements, words: evaluation.bad, region } });
+  }
+
+  function judge(yes) {
+    const pr = game.proposal;
+    if (!yes) {
+      setToast(`${pr.words.join(", ")}: not accepted`);
+      setGame({ ...game, proposal: null });
+      return;
+    }
+    const base = { ...game, proposal: null, extraWords: [...(game.extraWords || []), ...pr.words] };
+    const ev = evaluateMove(base.board, pr.placements, isFirstMove(base));
+    if (!ev.ok) return setGame(base);
+    const next = applyPlay(base, pr.placements, ev);
+    next.history[next.history.length - 1].accepted = pr.words;
+    setOurs((o) => new Set([...o, ...pr.words]));
+    addOurWords(langOf(game).id, pr.words, pr.region, game.players[pr.player].name).catch(() => {});
+    setGame(next);
   }
 
   function shuffleRack() {
@@ -268,13 +313,14 @@ export function ScrabbleApp({ online = null }) {
     if (!game) return "";
     if (game.over) return "Game over.";
     if (game.waiting) return "Waiting for your friend to join…";
+    if (proposal) return judging ? "" : `Waiting for a friend to accept ${proposal.words.join(", ")}…`;
     if (online && !myTurn) return `${cp.name}’s turn…`;
     if (cp.ai) return `${cp.name} is thinking…`;
     if (hidden) return `Pass the device to ${cp.name}.`;
     if (!pending.length) return `${cp.name}: tap a tile, then a square — or drag it.`;
     if (!evaluation.ok) return evaluation.error;
     if (!dict) return "Loading dictionary…";
-    if (evaluation.bad.length) return `Not a word: ${evaluation.bad.join(", ")}`;
+    if (evaluation.bad.length) return `Not in the dictionary: ${evaluation.bad.join(", ")}. Dialect or slang? Ask to accept it.`;
     return evaluation.words.map((w) => `${w.word} ${w.score}`).join(" · ") + (evaluation.bingo ? " · +50 bingo" : "");
   })();
 
@@ -315,6 +361,26 @@ export function ScrabbleApp({ online = null }) {
         <div className="space-y-4">
           {online && game.waiting && <InviteCard code={online.code} />}
 
+          {/* A word waiting for approval */}
+          {proposal && judging && (
+            <div className="animate-bounce-in rounded-3xl bg-paper p-5 ring-2 ring-ball">
+              <p className="text-sm font-semibold text-ink/60">
+                {game.players[proposal.player].name} {game.players[proposal.player].name === "You" ? "want" : "wants"} to play
+                {proposal.region ? ` · ${proposal.region}` : ""}
+              </p>
+              <p className="my-1 text-2xl font-black tracking-tight">{proposal.words.join(", ")}</p>
+              <p className="mb-4 text-sm text-ink/50">Is that a real word? If yes, it’s saved to Наші слова for good.</p>
+              <div className="flex gap-2">
+                <Button variant="accent" className="flex-1" onClick={() => judge(true)}>
+                  Accept
+                </Button>
+                <Button variant="ghost" className="flex-1" onClick={() => judge(false)}>
+                  Nope
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Scoreboard */}
           <div className="flex gap-2 overflow-x-auto">
             {game.players.map((p, i) => (
@@ -339,11 +405,15 @@ export function ScrabbleApp({ online = null }) {
 
           <Board
             board={game.board}
-            pending={pending}
+            pending={
+              judging
+                ? proposal.placements.map((p, k) => ({ r: p.r, c: p.c, l: p.l, blank: p.b, ri: -1 - k }))
+                : pending
+            }
             last={last}
             canDrop={selected != null}
             onCell={onCell}
-            onPendingDown={(e, p) => startDrag(e, { ...p, fromBoard: true })}
+            onPendingDown={(e, p) => p.ri >= 0 && startDrag(e, { ...p, fromBoard: true })}
           />
 
           {/* Status / live score */}
@@ -388,16 +458,22 @@ export function ScrabbleApp({ online = null }) {
           </div>
 
           {/* Controls */}
-          {myTurn && !cp.ai && !hidden && (
+          {myTurn && !cp.ai && !hidden && !proposal && (
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="accent"
-                className="min-w-[8rem] flex-[2]"
-                disabled={!canPlay}
-                onClick={play}
-              >
-                {canPlay ? `Play +${evaluation.score}` : "Play"}
-              </Button>
+              {canAsk ? (
+                <Button variant="primary" className="min-w-[8rem] flex-[2]" onClick={() => setAskOpen(true)}>
+                  Ask to accept +{evaluation.score}
+                </Button>
+              ) : (
+                <Button
+                  variant="accent"
+                  className="min-w-[8rem] flex-[2]"
+                  disabled={!canPlay}
+                  onClick={play}
+                >
+                  {canPlay ? `Play +${evaluation.score}` : "Play"}
+                </Button>
+              )}
               <Button variant="ghost" className="flex-1" onClick={() => (pending.length ? setPending([]) : shuffleRack())}>
                 {pending.length ? "Recall" : "Shuffle"}
               </Button>
@@ -443,7 +519,7 @@ export function ScrabbleApp({ online = null }) {
                   <span className="truncate text-ink/70">
                     <b className="text-ink">{game.players[h.player].name}</b>{" "}
                     {h.type === "play"
-                      ? `played ${h.words.join(", ")}${h.bingo ? " (bingo!)" : ""}`
+                      ? `played ${h.words.join(", ")}${h.bingo ? " (bingo!)" : ""}${h.accepted ? " ✓ accepted" : ""}`
                       : h.type === "swap"
                       ? `swapped ${h.count} tile${h.count > 1 ? "s" : ""}`
                       : "passed"}
@@ -486,7 +562,7 @@ export function ScrabbleApp({ online = null }) {
       {/* Blank letter picker */}
       <Modal open={!!blankAsk} onClose={() => setBlankAsk(null)} title="Blank tile — pick a letter">
         <div className="grid grid-cols-6 gap-2">
-          {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((L) => (
+          {[...langOf(game).alphabet].map((L) => (
             <button
               key={L}
               onClick={() => {
@@ -533,6 +609,33 @@ export function ScrabbleApp({ online = null }) {
             {online ? "Leave" : "End game"}
           </Button>
         </div>
+      </Modal>
+
+      {/* Ask the table to accept an unknown word */}
+      <Modal open={askOpen} onClose={() => setAskOpen(false)} title={`Accept ${evaluation?.bad?.join(", ") || ""}?`}>
+        <p className="mb-4 text-sm text-ink/60">
+          {online
+            ? "Your friend gets to say yes or no."
+            : "Show the others. If they agree, it counts."}{" "}
+          Accepted words go into <b className="text-ink">Наші слова</b> and work in every future game.
+        </p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-ink/40">Where’s it from? (optional)</p>
+        <div className="mb-5 flex flex-wrap gap-1.5">
+          {(REGIONS[lang] || REGIONS.en).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRegion((x) => (x === r ? null : r))}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                region === r ? "bg-ink text-paper" : "bg-ink/5 text-ink/70 hover:bg-ink/10"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+        <Button variant="accent" className="w-full" onClick={ask}>
+          {online ? "Send to my friend" : "Ask the table"}
+        </Button>
       </Modal>
 
       {/* Result */}

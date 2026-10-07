@@ -1,7 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, PingBall } from "../ui";
+import { LANGS } from "../../lib/scrabble/engine";
+import { fetchOurWords } from "../../lib/scrabble/ourWords";
+
+const LANG_KEY = "berlin-scrabble-lang";
+
+// The shared list of friend-accepted words, grouped by where they're from.
+function OurWords({ lang }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    setRows(null);
+    fetchOurWords(lang).then(setRows);
+  }, [lang]);
+  if (!rows || !rows.length) return null;
+  const groups = {};
+  for (const r of rows) (groups[r.region || "—"] ||= []).push(r.word);
+  return (
+    <details className="mt-3 text-sm text-ink/60">
+      <summary className="cursor-pointer font-semibold text-ink/70">
+        Наші слова · {rows.length} accepted by friends
+      </summary>
+      <div className="mt-2 space-y-2">
+        {Object.entries(groups).map(([region, words]) => (
+          <div key={region}>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink/40">{region}</p>
+            <p className="font-semibold text-ink/80">{words.join(" · ")}</p>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 const LEVELS = [
   ["easy", "Easy"],
@@ -11,6 +42,19 @@ const LEVELS = [
 
 export function Setup({ onStart, onResume, canResume, onOnline }) {
   const [hostName, setHostName] = useState("");
+  const [lang, setLangState] = useState("en");
+  useEffect(() => {
+    try {
+      const l = localStorage.getItem(LANG_KEY);
+      if (LANGS[l]) setLangState(l);
+    } catch {}
+  }, []);
+  const setLang = (l) => {
+    setLangState(l);
+    try {
+      localStorage.setItem(LANG_KEY, l);
+    } catch {}
+  };
   const [players, setPlayers] = useState([
     { name: "You", ai: null },
     { name: "Computer", ai: "normal" },
@@ -26,17 +70,37 @@ export function Setup({ onStart, onResume, canResume, onOnline }) {
       players.map((p, i) => ({
         name: p.name.trim() || (p.ai ? "Computer" : `Player ${i + 1}`),
         ai: p.ai,
-      }))
+      })),
+      lang
     );
 
   return (
     <div className="rounded-3xl bg-paper p-5 shadow-sm ring-1 ring-ink/10 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
-        <PingBall className="h-6 w-6" />
+        <PingBall className="h-6 w-6 shrink-0" />
         <div>
           <h2 className="text-lg font-black tracking-tight">New game</h2>
           <p className="text-sm text-ink/50">2–4 players · pass the phone around, or play the computer.</p>
         </div>
+      </div>
+
+      {/* Language */}
+      <div className="mb-4">
+        <div className="flex rounded-full bg-ink/[0.06] p-1 text-sm font-bold">
+          {Object.values(LANGS).map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setLang(l.id)}
+              className={`flex-1 rounded-full px-3 py-2 transition ${
+                lang === l.id ? "bg-ink text-paper" : "text-ink/50 hover:text-ink"
+              }`}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 px-1 text-xs text-ink/50">{LANGS[lang].rule}</p>
+        <OurWords lang={lang} />
       </div>
 
       <ul className="space-y-2">
@@ -128,7 +192,7 @@ export function Setup({ onStart, onResume, canResume, onOnline }) {
             aria-label="Your name for the online game"
             className="mb-2 w-full rounded-full bg-paper px-4 py-2 text-sm font-semibold outline-none ring-1 ring-ink/10 focus:ring-ball"
           />
-          <Button variant="primary" className="w-full" onClick={() => onOnline(hostName)}>
+          <Button variant="primary" className="w-full" onClick={() => onOnline(hostName, lang)}>
             Create online game
           </Button>
         </div>
@@ -137,10 +201,11 @@ export function Setup({ onStart, onResume, canResume, onOnline }) {
       <details className="mt-6 text-sm text-ink/60">
         <summary className="cursor-pointer font-semibold text-ink/70">How it works</summary>
         <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Standard Scrabble: 100 tiles, 7 on your rack, first word covers the centre ball.</li>
+          <li>Standard Scrabble: 100 tiles (104 in Ukrainian, apostrophe included), 7 on your rack, first word covers the centre ball.</li>
           <li>Orange squares multiply words (TW ×3, DW ×2); dark squares multiply letters (TL ×3, DL ×2).</li>
           <li>Use all 7 tiles in one turn for a 50-point bingo. Blank tiles score 0 and can be any letter.</li>
-          <li>Words are checked against the ENABLE dictionary before you can play them.</li>
+          <li>Words are checked against the dictionary before you can play them: ENABLE for English, the brown-uk dictionary for Ukrainian.</li>
+          <li>Dialect word, slang, something from home? Place it anyway and tap “Ask to accept”. If a friend says yes, it counts, and it’s saved to Наші слова for every future game.</li>
           <li>The game ends when the bag is empty and someone plays their last tile, or after six scoreless turns in a row.</li>
         </ul>
       </details>
