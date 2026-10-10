@@ -61,7 +61,7 @@ function InviteCard({ code }) {
     }
     // Copying blocked → offer the system share sheet instead.
     try {
-      await navigator.share?.({ title: "Морской бой?", url });
+      await navigator.share?.({ title: "Battleship?", url });
     } catch {}
   }
   return (
@@ -90,7 +90,7 @@ function Lobby({ onComputer, onOnline, onJoin, canResume, onResume }) {
       <div className="mb-5 flex items-center gap-3">
         <PingBall className="h-6 w-6 shrink-0" />
         <div>
-          <h2 className="text-lg font-black tracking-tight">Морской бой</h2>
+          <h2 className="text-lg font-black tracking-tight">Battleship</h2>
           <p className="text-sm text-ink/50">Hide your fleet, hunt theirs. Play the computer or a friend online.</p>
         </div>
       </div>
